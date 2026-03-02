@@ -2,3 +2,22 @@
   https://code.visualstudio.com/download
   ##install gitbah
   https://git-scm.com/
+##once completed installation of the package
+##open powershell
+cd \
+########clone the repo 
+git clone https://github.com/gopal1409/hcl-dev-secops-manifest-feb26.git
+####after cloning the repo
+git config --global user.name "gopal"
+git config --global user.email "gopal1409@gmail.com"
+2 git init
+   3 git add .
+   4 git commit -m "project for devsecops"
+   5 git branch -M main
+git branch 
+git log 
+##this will show your first commit 
+#once you see the first commit lets upload the same in your repo in github
+##we need to authentication github with ssh key 
+ssh-keygen -t rsa
+###press enter enter this will generate the ssh key which need to be uploaded in github
