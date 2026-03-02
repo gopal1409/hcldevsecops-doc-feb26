@@ -8,6 +8,7 @@ cd \
 ########clone the repo 
 git clone https://github.com/gopal1409/hcl-dev-secops-manifest-feb26.git
 ####after cloning the repo
+rm .git
 git config --global user.name "gopal"
 git config --global user.email "gopal1409@gmail.com"
 2 git init
