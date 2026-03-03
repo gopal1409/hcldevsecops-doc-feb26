@@ -54,4 +54,14 @@ jobs:
  git commit -m "frontend action created"
  git push origin develop
 #once push origin develop you can go to github action see the pipeline is executing 
+#isnide the yaml file we will modify some attribute first we are geeting error like artifactv3 is not supported 
+#in line 35 change the artifact to v4
+ uses: actions/upload-artifact@v4
+####in the line number 38 change the artifact upload path to 
+  path: frontend/dist
+##then again do 
+git add .
+git commit -m "change the artifact path and artifact version"
+git push origin develop
+##this will run the action again
 
