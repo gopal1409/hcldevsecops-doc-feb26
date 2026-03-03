@@ -1,1 +1,11 @@
-
+#inside this folder we will check branches 
+#we will create our first branch develop
+#git branch will show that we are in the main branch 
+git branch
+#3inside the main branch we will create a new branch where the name will be develop
+git checkout -b develop
+#now if you do git branch the point is in develop branch
+git branch
+#using vs code we will going to create our github action 
+#we need to create a .github folder inside that we need to create a folder called as workflows inside that we will create our yaml file
+.github ---> workflows --->ci-develop.yml
