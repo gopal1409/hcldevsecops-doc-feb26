@@ -64,4 +64,69 @@ git add .
 git commit -m "change the artifact path and artifact version"
 git push origin develop
 ##this will run the action again
-
+##you can replace the whole ci.yml file with this 
+#we need to wrtie down the workflow
+name: Full Stack CI - Develop
+#this workflow will execute on push or pull request to main or develop branches
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+jobs:
+    # ============
+    # Frontend Job
+    # ============
+    frontend:
+        name: React Frontend CI
+        runs-on: ubuntu-latest #this is the runner that will execute the job
+        defaults:
+            run:
+                working-directory: ./frontend #this is the directory where the frontend code is located 
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3 #this action checks out the code from the repository
+            - name: Set up Node.js
+              uses: actions/setup-node@v3 #this action sets up the Node.js environment
+              with:
+                node-version: '20' #this is the version of Node.js that we want to use
+            - name: Install dependencies
+              run: |
+                rm -rf node_modules package-lock.json #this command removes the node_modules folder and package-lock.json file to ensure a clean install
+                npm install #this command installs the dependencies specified in package.json
+            - name: Intall test framework (CI only)
+              run: npm install --save-dev jest #this command installs the Jest testing framework as a dev dependency
+            - name: build frontend
+              run: npm run build #this command builds the frontend application
+            - name: upload the frontend artifact 
+              uses: actions/upload-artifact@v4 #this action uploads the built frontend artifact
+              with:
+                name: frontend-build
+                path: frontend/dist
+    # ============
+    # backend Job
+    # ============
+    backend:
+        name: Spring Boot Backend CI
+        runs-on: ubuntu-latest #this is the runner that will execute the job
+        defaults:
+            run:
+                working-directory: ./backend #this is the directory where the frontend code is located 
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3 #this action checks out the code from the repository
+            - name: Set up Java
+              uses: actions/setup-java@v4 #this action sets up the Node.js environment
+              with:
+                distribution: 'temurin'
+                java-version: '17' #this is the version of Java that we want to use
+                cache: maven #this caches the Maven dependencies to speed up the build process
+            - name: Run Unit Tests
+              run: mvn test #this command installs the Jest testing framework as a dev dependency
+            - name: build backend
+              run: mvn clean package -DskipTests #this command builds the frontend application
+            - name: upload the backend artifact 
+              uses: actions/upload-artifact@v4 #this action uploads the built frontend artifact
+              with:
+                name: backend-jar
+                path: backend/target/*.jar
