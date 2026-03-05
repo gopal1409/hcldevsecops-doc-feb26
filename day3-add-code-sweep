@@ -1,0 +1,167 @@
+#first we will create a new branch called as security 
+  git branch -b security
+  #this will show that i am in security branch
+  git branch
+  #####to integrate with hcl app scan code sweep we need isnide hcl app scan create an application
+  ####once you creat an application you will get the application id 
+  #next there will be tool ico and you will see api click on generate this will give you two things 
+  ##you will get keyid and key secrte store the same in a note pad
+  Your Key ID and Key Secret 
+  ################
+  1. appid
+  2. keyid
+  3. keysecrte 
+  ###this three ids are required for codesweep sast and dast scanning
+  ##i want to implement codesweep in the tool you will find integration select cicd 
+  ##there you will find codesweep-click on this will give you the yaml file 
+  Ensure that the "Workflow permissions" for your repository are set to "Read and write permissions". This allows Codesweep to scan your files and create checkruns and annotations for the issues it finds. You can access these settings by going to Settings -> Actions -> General.
+  #####once you allow read write permission lets modify the backend pipeline
+  #go inside the ci-develop.yml delete everything and add this new file which contains the scanning 
+  #we need to wrtie down the workflow
+name: Full Stack CI - Develop
+#this workflow will execute on push or pull request to main or develop branches
+on:
+  push:
+    branches: [ main, develop, security ]
+  pull_request:
+    branches: [ main, develop, security ]
+    types: [opened,synchronize]
+jobs:
+    # ============
+    # Frontend Job
+    # ============
+    frontend:
+        name: React Frontend CI
+        runs-on: ubuntu-latest #this is the runner that will execute the job
+        #runs-on: self-hosted  #this is the runner that will execute the job
+        defaults:
+            run:
+                working-directory: ./frontend #this is the directory where the frontend code is located 
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                fetch-depth: 0 #this command checks out the code from the repository with full history, which is necessary for some actions that require access to the commit history
+            - name: Set up Node.js
+              uses: actions/setup-node@v3 #this action sets up the Node.js environment
+              with:
+                node-version: '20' #this is the version of Node.js that we want to use
+            - name: Install dependencies
+              run: |
+                rm -rf node_modules package-lock.json #this command removes the node_modules folder and package-lock.json file to ensure a clean install
+                npm install #this command installs the dependencies specified in package.json
+            - name: Intall test framework (CI only)
+              run: npm install --save-dev jest #this command installs the Jest testing framework as a dev dependency
+            - name: build frontend
+              run: npm run build #this command builds the frontend application
+            - name: upload the frontend artifact 
+              uses: actions/upload-artifact@v4 #this action uploads the built frontend artifact
+              with:
+                name: frontend-build
+                path: frontend/dist
+    # ============
+    # backend Job
+    # ============
+    scan:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+        - name: Run AppScan CodeSweep
+          uses: HCL-TECH-SOFTWARE/appscan-codesweep-action@v2.1
+      env: 
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+    backend:
+        needs: scan #this job will run after the frontend job is completed
+        if: needs.scan.result == 'success' #this job will only run if the scan job was successful
+        name: Spring Boot Backend CI
+        runs-on: ubuntu-latest #this is the runner that will execute the job
+        defaults:
+            run:
+                working-directory: ./backend #this is the directory where the frontend code is located 
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3 #this action checks out the code from the repository
+            - name: Set up Java
+              uses: actions/setup-java@v4 #this action sets up the Node.js environment
+              with:
+                distribution: 'temurin'
+                java-version: '17' #this is the version of Java that we want to use
+                cache: maven #this caches the Maven dependencies to speed up the build process
+
+            - name: Run Unit Tests
+              if: success()
+              run: mvn test #this command installs the Jest testing framework as a dev dependency
+            - name: build backend
+              run: mvn clean package -DskipTests #this command builds the frontend application
+            - name: upload the backend artifact 
+              if: success() #this step will only run if the previous steps were successful
+              uses: actions/upload-artifact@v4 #this action uploads the built frontend artifact
+              with:
+                name: backend-jar
+                path: backend/target/*.jar
+  ##inside the     backend/src/main/java/com/lnd/controller/
+  ##create a file    UserController.java
+  #inside this file add the valnurability
+  package com.lnd.controller;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    private JdbcTemplate jdbcTemplate;
+
+    @GetMapping("/search")
+    public String searchUser(@RequestParam String username) {
+
+        String query = "SELECT * FROM users WHERE username = '" + username + "'";
+
+        return jdbcTemplate.queryForObject(query, String.class);
+    }
+}
+#once you add this valnurability
+git add .
+git commit -m "added sql injection"
+git push origin security
+###once you push the code 
+got to github action
+#############################
+click on pull request at the top it is showing compare and pull request 
+#this will start the valunarabilty scan #on pull request we have put sync
+###lets finally remove the valunaribiliy from the  UserController.java
+##delete everything then add this 
+package com.lnd.controller;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @GetMapping("/search")
+    public List<Map<String, Object>> searchUser(@RequestParam String username) {
+
+        String query = "SELECT * FROM users WHERE username = ?";
+
+        return jdbcTemplate.queryForList(query, username);
+    }
+}
+##then do 
+git add .
+git commit -m "remove security valnurability"
+git push origin security 
+###go to pull request create a new pull request
+origin branch develop -- map it with security
