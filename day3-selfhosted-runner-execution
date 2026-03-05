@@ -1,0 +1,24 @@
+##to execute your job in self hosted runner
+  #first do the git pull to avoid and clash 
+  git pull origin develop
+  ###### lets modify the cvi-develop pipeline
+  #go to .github-->workflows-ci-develop.yml
+  ###modify this lines 
+  frontend:
+        name: React Frontend CI
+        #runs-on: ubuntu-latest #it is showing runs on ubuntu we will comment this line 
+        runs-on: self-hosted  #add this line below so that it will run on self hostd
+
+####also we need to add it in the backend job also 
+backend:
+        needs: frontend #this job will run after the frontend job is completed
+        name: Spring Boot Backend CI
+        #runs-on: ubuntu-latest #running on hosted runner
+        runs-on: self-hosted  #add this line below so that it will run on self hostd
+  ###once modify the code 
+  git status
+          ##this will show that ci-develop.yml is modified
+          git add .
+          git commit -m "running job on self hosted runner"
+          git push origin develop
+    ##then on the powersehll terminal you will see the job is running. 
