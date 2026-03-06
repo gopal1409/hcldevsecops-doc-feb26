@@ -157,3 +157,11 @@ Require branches to be up to date before merging
 Require conversation resolution before merging
 
 Do not allow bypassing the above settings
+##lets add the security check
+git add .
+git commit -m "Added security gate"
+git push origin security
+##now go to the pull request tab you will see 
+Security had recent pushes 1 minute ago
+#click on compare and pull
+#then create the pull request
