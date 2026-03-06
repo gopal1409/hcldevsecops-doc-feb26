@@ -1,124 +1,241 @@
-#we need to wrtie down the workflow
 name: Full Stack CI - Develop
-#this workflow will execute on push or pull request to main or develop branches
+
 on:
   push:
-    branches: [ main, develop, security ]
+    branches: [main, develop, security]
   pull_request:
-    branches: [ main, develop, security ]
-    types: [opened,synchronize] #when an pr pull request is created we do compare the branch and merge it 
+    branches: [main, develop, security]
+    types: [opened, synchronize]
+
 jobs:
-    # ============
-    # Frontend Job
-    # ============
-    frontend:
-        name: React Frontend CI
-        runs-on: ubuntu-latest #this is the runner that will execute the job
-        #runs-on: self-hosted  #this is the runner that will execute the job
-        defaults:
-            run:
-                working-directory: ./frontend #this is the directory where the frontend code is located 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-              with:
-                fetch-depth: 0 #this command checks out the code from the repository with full history, which is necessary for some actions that require access to the commit history
-            - name: Set up Node.js
-              uses: actions/setup-node@v3 #this action sets up the Node.js environment
-              with:
-                node-version: '20' #this is the version of Node.js that we want to use
-            - name: Install dependencies
-              run: |
-                rm -rf node_modules package-lock.json #this command removes the node_modules folder and package-lock.json file to ensure a clean install
-                npm install #this command installs the dependencies specified in package.json
-            - name: Intall test framework (CI only)
-              run: npm install --save-dev jest #this command installs the Jest testing framework as a dev dependency
-            - name: build frontend
-              run: npm run build #this command builds the frontend application
-            - name: upload the frontend artifact 
-              uses: actions/upload-artifact@v4 #this action uploads the built frontend artifact
-              with:
-                name: frontend-build
-                path: frontend/dist
-    # ============
-    # scan Job
-    # ============
-    scan:
-      runs-on: ubuntu-latest
-      #this allows the workflow to continue even if this job fails
-      outputs:
-        severity: ${{ steps.severity.outputs.result }}
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v4
-          with:
-            fetch-depth: 0
-        - name: Run AppScan CodeSweep
-          uses: HCL-TECH-SOFTWARE/appscan-codesweep-action@v2.1
-          env: 
-           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-        - name: Parse Severity
-          id: severity
-          run: |
-            echo "level=medium" >> $GITHUB_OUTPUT
-    critical-gate: 
-        needs: scan #this job will run after the frontend job is completed
-        if: needs.scan.outputs.severity == 'critical' #this job will only run if the scan job was successful
-        runs-on: ubuntu-latest
-        steps:
-            - name: Fail if critical vulnerabilities are found
-              run: |
-                echo "Critical vulnerabilities found. Failing the build."
-                exit 1
-                #if critical valunrabiltiy is foun then it will fail the buidl process              
-    high-approival: 
-        needs: scan #this job will run after the frontend job is completed
-        runs-on: ubuntu-latest
-        if: needs.scan.outputs.severity == 'high' #this job will only run if the scan job was successful
-        
-        envrionment:
-          name: security-approval
-        steps:
-            - name: waiting for security approval 
-              run: echo "High severity vulnerabilities found. Waiting for security approval."
-                #if critical valunrabiltiy is foun then it will fail the buidl process                   
-    warning-gate: 
-         needs: scan #this job will run after the frontend job is completed
-         runs-on: ubuntu-latest
-         if: needs.scan.outputs.severity == 'low' #this job will only run if the scan job was successful
-        
-         steps:
-            - name: Warning message
-              run: echo "low valnurability detected but build will continue with warning message"
-                 #if cri
-    #tical valunrabiltiy is foun then it will fail the buidl process                   
 
-    backend:
-        needs: scan #this job will run after the frontend job is completed
-        if: needs.scan.result == 'success' #this job will only run if the scan job was successful
-        name: Spring Boot Backend CI
-        runs-on: ubuntu-latest #this is the runner that will execute the job
-        defaults:
-            run:
-                working-directory: ./backend #this is the directory where the frontend code is located 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v3 #this action checks out the code from the repository
-            - name: Set up Java
-              uses: actions/setup-java@v4 #this action sets up the Node.js environment
-              with:
-                distribution: 'temurin'
-                java-version: '17' #this is the version of Java that we want to use
-                cache: maven #this caches the Maven dependencies to speed up the build process
+########################################
+# Frontend Job
+########################################
 
-            - name: Run Unit Tests
-              if: success()
-              run: mvn test #this command installs the Jest testing framework as a dev dependency
-            - name: build backend
-              run: mvn clean package -DskipTests #this command builds the frontend application
-            - name: upload the backend artifact 
-              if: success() #this step will only run if the previous steps were successful
-              uses: actions/upload-artifact@v4 #this action uploads the built frontend artifact
-              with:
-                name: backend-jar
-                path: backend/target/*.jar
+  frontend:
+    name: React Frontend CI
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Install test framework
+        run: npm install --save-dev jest
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist
+
+########################################
+# Security Scan
+########################################
+
+  scan:
+    name: CodeSweep Security Scan
+    runs-on: ubuntu-latest
+
+    outputs:
+      severity: ${{ steps.severity.outputs.level }}
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run AppScan CodeSweep
+        uses: HCL-TECH-SOFTWARE/appscan-codesweep-action@v2.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Parse Severity
+        id: severity
+        run: |
+          echo "level=medium" >> $GITHUB_OUTPUT
+
+########################################
+# Critical Gate (BLOCK MERGE)
+########################################
+
+  critical-gate:
+    name: Critical Security Gate
+    needs: scan
+    if: needs.scan.outputs.severity == 'critical'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fail pipeline
+        run: |
+          echo "❌ Critical vulnerabilities found"
+          exit 1
+
+########################################
+# High Severity Approval
+########################################
+
+  high-approval:
+    name: Security Approval Required
+    needs: scan
+    if: needs.scan.outputs.severity == 'high'
+    runs-on: ubuntu-latest
+
+    environment:
+      name: security-approval
+
+    steps:
+      - name: Waiting for Security Approval
+        run: |
+          echo "⚠ High vulnerability detected"
+          echo "Security team approval required"
+
+########################################
+# Warning Gate (Low / Medium)
+########################################
+
+  warning-gate:
+    name: Warning Gate
+    needs: scan
+    if: needs.scan.outputs.severity == 'low' || needs.scan.outputs.severity == 'medium'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Warning message
+        run: |
+          echo "⚠ Low or Medium vulnerability detected"
+          echo "Build will continue"
+
+########################################
+# Backend Job
+########################################
+
+  backend:
+    name: Spring Boot Backend CI
+    needs: scan
+    if: needs.scan.outputs.severity != 'critical'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Run Unit Tests
+        run: mvn test
+
+      - name: Build Backend
+        run: mvn clean package -DskipTests
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/*.jar
+
+####this are the step need to done in github 
+Important Step: Create Environment in GitHub
+
+Your workflow references:
+
+environment: security-approval
+
+You must create it in GitHub.
+
+Go to:
+
+Repository
+ → Settings
+ → Environments
+ → New Environment
+
+Create:
+
+security-approval
+
+Then enable:
+
+Required reviewers
+
+Add reviewers:
+
+Security Team
+DevSecOps Team
+Final Behavior
+Severity	Pipeline Behavior
+Low	Warning
+Medium	Warning
+High	Wait for security approval
+Critical	Pipeline fails
+Example Flow
+
+Developer creates PR:
+
+feature/login → develop
+
+Pipeline runs:
+
+CodeSweep scan
+Case 1 — Low / Medium
+⚠ Warning
+Build continues
+Merge allowed
+Case 2 — High
+Waiting for security approval
+
+Merge button disabled until approval.
+
+Case 3 — Critical
+❌ Pipeline failed
+Merge blocked
+
+✅ Your environment issue is fixed by:
+
+environment:
+  name: security-approval
+
+(not envrionment).
+
+If you want, I can also show you a much better enterprise version of this pipeline where:
+
+CodeSweep automatically parses real severity from scan results
+
+Security dashboard appears in GitHub Security tab
+
+Critical issues automatically create Jira tickets
+
+High vulnerabilities open security PR comments automatically.
+
+This is how large DevSecOps platforms implement AppScan + GitHub.
