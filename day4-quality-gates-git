@@ -1,0 +1,16 @@
+#lets start with a fresh project
+  5 git add .
+   6 git commit -m "test"
+  ##we will move to the main branch 
+   7 git checkout main
+  #belwo command will delete security and develop branch from the local system
+   8 git branch -D security
+   9 git branch -D develop
+  #this will show both the branch from your local system is deleted
+  10 git branch
+#lets delete the remote branches also 
+  12 git push origin --delete security
+#delete the develop branch also
+  14 git push origin --delete develop
+  git pull origin main
+#you can go to github and check the branch is deleted or not
