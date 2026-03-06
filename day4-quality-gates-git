@@ -112,3 +112,48 @@ jobs:
   23 git commit -m "added github action pipeline"
   24 git push origin develop
 #this will run the pipeline which is running successfully
+#now i got a requst to create a user controller 
+##inside the     backend/src/main/java/com/lnd/controller/
+  ##create a file    UserController.java
+  #inside this file we will add user controller 
+package com.lnd.controller;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    private JdbcTemplate jdbcTemplate;
+
+    @GetMapping("/search")
+    public String searchUser(@RequestParam String username) {
+
+        String query = "SELECT * FROM users WHERE username = '" + username + "'";
+
+        return jdbcTemplate.queryForObject(query, String.class);
+    }
+}
+####now i want to do security testing but with quality gates if security testing passed then only allow me to merge with develop branch
+26 git add .
+  27 git commit -m "added user controller"
+#we will create a security branch inside the security branch we will test the code using github action
+  28 git checkout -b security
+git add .
+git commit -m "security testing"
+####we are not pushing the code to the remote repo first we will add all the quality gates then we will push the code. 
+##inside your github project there is setting icon
+##click on branches
+#click on add classic branch protection rule
+#give the branch name as develop
+##select this rules 
+Require a pull request before merging
+Require approvals
+Require status checks to pass before merging
+Require branches to be up to date before merging
+#below this add the scan status 
+#just add scan 
+Require conversation resolution before merging
+
+Do not allow bypassing the above settings
