@@ -164,4 +164,9 @@ git push origin security
 ##now go to the pull request tab you will see 
 Security had recent pushes 1 minute ago
 #click on compare and pull
-#then create the pull request
+#then create the pull request go to pull rea
+##then do 
+t
+origin branch develop -- map it with security
+##base branch will be develop -- compare to security 
+#now it will show one approval and merge will be blocked due to sql inejection
