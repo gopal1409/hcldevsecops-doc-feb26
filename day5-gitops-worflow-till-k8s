@@ -72,3 +72,140 @@ jobs:
           git commit -m "skynet started"
           git push origin skynet
   
+#lets store the secret in github this way we can avoid secret leaks not only that this secret will be maintain by github
+##go to secret in github-on left side extreme below you will find security---secret and variable click on it-drop down choose action
+#####click on new repository secret add dockeruser name and password 
+DOCKER_USERNAME
+DOCKER_PASSWORD
+##add required secret and save it
+#######now we will modify the ci.yml file
+name: Enterprise DevSecOps Pipeline
+
+on:
+  push:
+    branches: [main, skynet]
+
+permissions:
+  contents: write
+  security-events: write
+  actions: read
+  id-token: write
+
+env:
+  FRONTEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/frontend
+  BACKEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/backend
+
+jobs:
+
+# -----------------------------
+# Build Frontend
+# -----------------------------
+
+  frontend-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Fix npm optional dependency bug
+      run: |
+        cd frontend
+        rm -rf node_modules
+        rm -f package-lock.json
+        npm install
+
+    - name: Build React
+      run: |
+        cd frontend
+        npm run build
+# -----------------------------
+# Build Backend
+# -----------------------------
+
+  backend-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build Spring Boot
+        run: |
+          cd backend
+          mvn clean package
+
+# -----------------------------
+# Docker Build + Scan
+# -----------------------------
+
+  docker-build-scan:
+    runs-on: ubuntu-latest
+    needs: [frontend-build, backend-build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build Images
+      - name: Build Frontend Image
+        run: docker build -t frontend-image ./frontend
+
+      - name: Build Backend Image
+        run: docker build -t backend-image ./backend
+
+      # Install Trivy
+      - uses: aquasecurity/setup-trivy@v0.2.0
+      # Security Gate Critical Only 
+      - name: Scan Frontend Image Fail on Critical
+        id: critical_scan
+        continue-on-error: true
+        run: |
+          trivy image --severity CRITICAL --exit-code 1 \
+          no-progress frontend-image
+          trivy image --severity CRITICAL --exit-code 1 \
+          no-progress backend-image
+          
+
+      # Scan Images
+      - name: Scan Frontend Image(Full Report)
+        if: always()
+        run: |
+          trivy image --severity CRITICAL,HIGH,MEDIUM,LOW \
+          --format sarif -o trivy-results.sarif frontend-image
+
+      - name: Scan Backend Image(Full Report)
+        if: always()
+        run: |
+          trivy image --severity CRITICAL,HIGH,MEDIUM,LOW \
+          --format sarif -o trivy-results.sarif backend-image
+
+      
+      # Docker login
+      - name: Docker Login
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+          -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      # Tag images
+      - name: Tag Images
+        run: |
+          docker tag backend-image $BACKEND_IMAGE:${{ github.sha }}
+          docker tag frontend-image $FRONTEND_IMAGE:${{ github.sha }}
+
+      # Push images
+      - name: Push Images
+        run: |
+          docker push $BACKEND_IMAGE:${{ github.sha }}
+          docker push $FRONTEND_IMAGE:${{ github.sha }}
+
+##after this 
+git add .
+git commit -m "added aqua security
+git push origin skynet
