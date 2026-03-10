@@ -1,0 +1,43 @@
+###lets login to k8s cluster. 
+  ##inside the k8s cluster we are already running argocd the cicd platform
+  ##you can access the argocd using the below mentioned url 
+  https://argocdhcl.eastus.cloudapp.azure.com:30488/
+##user name: admin
+  ##password: 4olZzFjGWoxni3f8
+    ###then do ssh in your k8s cluster
+    ##open another powershell
+    ssh hcadmin@40.76.114.116
+    #password: Admin@12345678
+    ####once you login create a new file 
+    touch gopal.yml
+    ##change the name of the file to your name
+    nano gopal.yml
+    ###inside this file we are going to add the argocd manifest file
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+ #change my name to your name
+  name: gopal-skyproject-dev
+  namespace: argocd
+
+spec:
+  project: default
+
+  source:
+    ##repo name you need to change it with your repo name 
+    repoURL: https://github.com/gopal1409/skyproject-gitops
+    targetRevision: main
+    path: overlays/dev
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: skyproject-lnd-dev
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+##save the file ctrl x press y and enter
+        ##lets apply this file in k8s environment
+        kubectl apply -f gopal.yml
+        
