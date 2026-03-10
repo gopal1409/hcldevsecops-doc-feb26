@@ -1,0 +1,15 @@
+##to do continues deployment in k8s we need to have all the manifest file in our repo open powershell
+  - -----------
+    cd \
+    git clone https://github.com/gopal1409/skyproject-gitops.git
+    cd .\skyproject-gitops\
+  #as you are cloning my repo we are deleting some refrences of git
+   rm .git
+    git init
+    git add .
+    git commit -m "kubernetes-manifest"
+    git branch -M main
+  #replace this remote repo with your own repo so create a new repo 
+    git remote add origin 
+  #finally push it in github
+   git push -u origin main
