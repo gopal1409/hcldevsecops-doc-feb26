@@ -13,3 +13,24 @@
     git remote add origin 
   #finally push it in github
    git push -u origin main
+##lets generate the token so that my ci project can authentication with cd project or gitops project
+##open github setting using the link 
+https://github.com/settings/tokens
+##########once opened click on 
+generate new token-->generate new token(classic)
+###give a name to the token
+gitops-repo-access
+##################
+##select the scopes
+repo
+workflow
+write:packages
+####then generate the token and store it in a note pad
+#then go back to your ci repo 
+##cllick on setting of the repo
+###in setting go below you will find security
+click on secret and variables
+#####then click on new repo secret
+#name will be 
+GITOPS_TOKEN
+###paste the token which you got it from previous step
