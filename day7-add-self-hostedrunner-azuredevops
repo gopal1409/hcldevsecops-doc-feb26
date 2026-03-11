@@ -1,0 +1,18 @@
+##login to the vm using ssh
+  ##open another power shell change the ip address with the ip address in your lab sheet
+  ssh@20.84.49.186
+  ##password is Admin@!2345678
+  ##install the agent 
+  sudo apt-get update
+  sudo apt install unzip
+  mkdir myagent && cd myagent
+  wget https://download.agent.dev.azure.com/agent/4.270.0/vsts-agent-linux-x64-4.270.0.tar.gz
+  #3untar the agent file 
+  ls
+  tar zxvf vsts-agent-linux-x64-4.270.0.tar.gz
+  ###now if you do ls 
+  ./config.sh
+  ##this will ask me for server url
+  
+  ##once you login we need to install the agent 
+  ##go to project-setting --you will see agent pool click on default you will get an option to add the agent 
