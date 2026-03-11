@@ -1,0 +1,19 @@
+##we will build an code an upload the same in azure repo in azuredevops login to your remote desktop
+cd \
+  ##clone the application
+
+git clone https://github.com/gopal1409/spring-hello1.git
+cd .\spring-hello1\
+ rm .git
+ git status
+ git init
+ git add .
+git commit -m "spring hello project"
+git log
+  #generat the ssh key and upload the public key in azure repo
+  #when you run this command just press enter enter and enter 
+ssh-keygen -t rsa
+  #you will get the path to your public key after cat put the path 
+cat C:\Users\gopal/.ssh/id_rsa.pub
+  #once you get the public key 
+  ##store it inside azure devops
