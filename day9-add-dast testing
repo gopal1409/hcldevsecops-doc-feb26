@@ -1,0 +1,202 @@
+##to create an dynaimic testing we need to containerized my application. 
+  #we need to make that container in a runnalbe state 
+  ##go to repos in azure devops click on the orage icon 
+  ##click on the files
+  #create a new file the name of the file will be dockerfile
+  ###and paste this content
+  #########################################
+# STAGE 1 – BUILD STAGE
+#########################################
+FROM maven:3.9.9-eclipse-temurin-17 AS builder
+
+WORKDIR /build
+
+# Copy pom first (better caching)
+COPY pom.xml .
+
+# Download dependencies
+RUN mvn -B -q -e -C dependency:go-offline
+
+# Copy source
+COPY src ./src
+
+# Build application
+RUN mvn clean package -DskipTests
+
+#########################################
+# STAGE 2 – RUNTIME STAGE
+#########################################
+FROM eclipse-temurin:17-jdk-jammy
+
+WORKDIR /app
+
+# Create non-root user (security best practice)
+RUN useradd -m springuser
+
+# Copy jar from builder stage
+COPY --from=builder /build/target/*.jar app.jar
+
+# Change ownership
+RUN chown -R springuser:springuser /app
+
+USER springuser
+
+EXPOSE 8080
+
+ENTRYPOINT ["java","-jar","app.jar"]
+#####once you paste this content edit your pipeline in the pipeline if you go to sast or dasxt testing phase you will find there is application id replace it with your application id 
+##better you can copy your pipeline in a note pad then modify the pipeline with your application id which is unique to you
+trigger:
+- master
+
+pool:
+  name: default
+
+variables:
+
+  imageName: springboot-dast
+  tag: $(Build.BuildId)
+
+stages:
+
+#################################
+# BUILD STAGE
+#################################
+
+- stage: Build
+  displayName: Secure Build Stage
+
+  jobs:
+
+#################################
+# BUILD JOB
+#################################
+
+  - job: MavenBuild
+    displayName: Secure Maven Build
+
+    steps:
+
+#################################
+# SOURCE CONTROL CHECK
+#################################
+
+    - checkout: self
+      persistCredentials: true
+
+#################################
+# SECRET SCAN
+#################################
+
+    - script: |
+        docker run --rm \
+        -v $(System.DefaultWorkingDirectory):/path \
+        zricethezav/gitleaks detect \
+        --source="/path" \
+        --report-format=json \
+        --report-path=/path/gitleaks-report.json
+      displayName: Secret Scan
+
+#################################
+# MAVEN BUILD
+#################################
+
+    - task: Maven@4
+
+      displayName: Maven Build
+
+      inputs:
+
+        mavenPomFile: pom.xml
+        goals: clean install
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+
+#################################
+# SAST
+#################################
+
+    - task: HCLAppScanOnCloud@2
+
+      inputs:
+
+        AppSecTestService: hclappscan
+        applications: ca72e53b-5bd3-4626-ba24-8d4106cf31c2
+        scantype: static
+        scanMethod: IRXless
+
+      continueOnError: true
+
+#################################
+# DAST JOB (PARALLEL)
+#################################
+
+  - job: DAST
+    displayName: Dynamic Security Testing
+
+    dependsOn: MavenBuild
+
+    steps:
+
+#################################
+# DOCKER BUILD
+#################################
+
+    - task: Docker@2
+
+      displayName: Docker Build
+
+      inputs:
+
+        command: build
+        Dockerfile: dockerfile
+        repository: $(imageName)
+        tags: |
+          $(tag)
+
+#################################
+# RUN CONTAINER
+#################################
+
+    - script: |
+
+        docker run -d \
+        -p 8080:8080 \
+        --name springboot-test \
+        $(imageName):$(tag)
+
+        sleep 60
+
+      displayName: Run container
+
+#################################
+# DAST SCAN
+#################################
+
+    - task: HCLAppScanOnCloud@2
+
+      displayName: DAST Scan
+
+      inputs:
+
+        AppSecTestService: hclappscan
+        applications: ca72e53b-5bd3-4626-ba24-8d4106cf31c2 
+        scantype: dynamic
+        dynamicType: DAST
+        scanURL: http://localhost:8080
+        network: public
+
+      continueOnError: true
+
+#################################
+# CLEANUP
+#################################
+
+    - script: |
+
+        docker stop springboot-test
+
+        docker rm springboot-test
+
+      displayName: Cleanup
+      condition: always()
